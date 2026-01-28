@@ -4,7 +4,7 @@ A practical implementation of Docker best practices and optimization strategies,
 
 ## Full Article
 
-**[Read the complete guide: "Containerizing a React App: Docker Best Practices & Optimization for Production"](https://medium.com/@xithira20/docker-best-practices-optimization-for-production-6c6c7182bb0b)**
+**[Read the complete guide: "Containerizing a React App: Docker Best Practices & Optimization for Production"](https://tinyurl.com/Docker-Optimization-Techniques)**
 
 
 This repository serves as a hands-on companion to the article, demonstrating each optimization technique applied to a real React portfolio application.
@@ -147,6 +147,8 @@ docker-optimized/
 │
 ├── nginx.conf                  # Production nginx configuration
 ├── .dockerignore               # Build context exclusions
+├── tailwind.config.js          # Tailwind CSS configuration
+├── postcss.config.js           # PostCSS processing configuration
 │
 ├── scripts/
 │   ├── test-production.sh      # Automated test suite
@@ -205,13 +207,13 @@ By exploring this repository, you'll understand how to:
 
 ##  Next Steps
 
-**Deployment**: Push to Docker Hub/ECR then deploy to cloud VM or PaaS.
-**Kubernetes**: Create Deployment + Service manifests, or package as Helm chart.
-**Docker Compose**: Write docker-compose.yml with optional nginx proxy.
-**CI/CD**: Add GitHub Actions workflow for automated builds and scans.
-**Monitoring**: Add health checks and integrate with Prometheus/Grafana.
-**Cloud**: Deploy to AWS ECS, GCP Cloud Run, or Azure App Service.
-**Optimization**: Try distroless images, BuildKit caching, or multi-arch builds.
+**Deployment**: Push to Docker Hub/ECR then deploy to cloud VM or PaaS.<br>
+**Kubernetes**: Create Deployment + Service manifests, or package as Helm chart.<br>
+**Docker Compose**: Write docker-compose.yml with optional nginx proxy.<br>
+**CI/CD**: Add GitHub Actions workflow for automated builds and scans.<br>
+**Monitoring**: Add health checks and integrate with Prometheus/Grafana.<br>
+**Cloud**: Deploy to AWS ECS, GCP Cloud Run, or Azure App Service.<br>
+**Optimization**: Try distroless images, BuildKit caching, or multi-arch builds.<br>
 
 ---
 
