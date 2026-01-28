@@ -1,9 +1,92 @@
- node_modules
+# ============================================
+# .dockerignore - Exclude from Docker build context
+# ============================================
+# Benefits:
+# - Faster builds (less data sent to daemon)
+# - Smaller build context
+# - Prevents secrets from leaking into images
+# - Avoids cache invalidation from irrelevant changes
+# ============================================
+
+# Dependencies (install fresh in container)
+node_modules
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# Build outputs (rebuild in container)
 build
+dist
+.next
+out
+
+# Testing
+coverage
+.nyc_output
+*.test.js
+*.spec.js
+__tests__
+jest.config.js
+
+# Version control
 .git
 .gitignore
-README.md
+.gitattributes
+
+# Environment files (NEVER include secrets)
 .env
+.env.*
+.env.local
+.env.*.local
+*.env
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*.swn
 .DS_Store
+Thumbs.db
+*.sublime-*
+
+# Documentation (not needed in image)
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+docs
+*.md
+LICENSE
+
+# CI/CD configuration
+.github
+.gitlab-ci.yml
+.travis.yml
+.circleci
+Jenkinsfile
+azure-pipelines.yml
+
+# Docker files (don't need Dockerfiles in image)
+Dockerfile*
+docker-compose*.yml
+.docker
+.dockerignore
+
+# Scripts (build/dev scripts not needed in production)
+scripts
+
+# Security scan results
+scan.json
+*.scan.json
+trivy-report.*
+
+# Misc development files
 *.log
+*.tmp
+*.temp
+.cache
+.parcel-cache
+.eslintcache
+*.tsbuildinfo
