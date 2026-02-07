@@ -1,5 +1,5 @@
-# Use the official Node.js image
-FROM node:18
+# Use alpine image for speed since it's smaller in size
+FROM node:18-alpine
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -8,13 +8,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install ci --only=production
 
-# Copy the rest of your application code
+# Copy source code
 COPY . .
 
 # Expose port 3000
 EXPOSE 3000
 
-# Start the development server
+# Start the app
 CMD ["npm", "start"]
