@@ -31,6 +31,16 @@ pipeline {
             }
         }
         
+        stage('Debug Credentials'){
+            steps{
+                sh """
+                echo "Checking AWS CLI identity"
+                aws sts get-caller-identity
+                """
+            }
+        }
+
+
         stage('ECR Login') {
             steps {
                 script {
