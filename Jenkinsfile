@@ -3,15 +3,15 @@ pipeline {
     
     environment {
         // AWS Configuration
-        AWS_REGION     = "us-east-1"
-        IMAGE_REPO     = "react-app"
-        ECR_REGISTRY   = "371409610452.dkr.ecr.us-east-1.amazonaws.com/react-app"
+        AWS_REGION     = credentials('aws-region')
+        IMAGE_REPO     = credentials('ecr-repository')
+        ECR_REGISTRY   = credentials('ecr-registry')
         IMAGE_TAG      = "v1.${BUILD_NUMBER}"
         VERSION_TAG    = "${new Date().format('yyyyMMdd-HHmmss')}-${BUILD_NUMBER}"
         FULL_IMAGE     = "${ECR_REGISTRY}/${IMAGE_REPO}"
         
         // EC2 Configuration
-        TARGET_INSTANCE_ID = "i-0cb4827f5508cd4bf"
+        TARGET_INSTANCE_ID = credentials('ec2-instance-id')
         CONTAINER_NAME = "react-app"
         CONTAINER_PORT = "80:3000"
     }
