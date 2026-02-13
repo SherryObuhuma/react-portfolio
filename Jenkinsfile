@@ -45,7 +45,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'ecr-repository',variable: 'REPO_SECRET')]){    
                     sh """
-                        echo "Repository is: ${REPO_SECRET}
+                        echo "Repository is: ${REPO_SECRET}"
                         aws ecr get-login-password --region ${AWS_REGION} | \
                         docker login --username AWS --password-stdin ${ECR_REGISTRY}
                     """
@@ -201,11 +201,11 @@ pipeline {
         failure {
             echo "❌ Deployment failed!"
             echo "Check logs above for details"
-        }
-    post{    
+        }   
         always {
             node{
                 sh 'docker logout ${ECR_REGISTRY} || true'
+            }
         }
     }
-}
+}   
