@@ -34,8 +34,15 @@ pipeline  {
                 stage('Debug  Credentials'){
                         steps  {
                                 sh  '''
-                                echo  "Checking  AWS  CLI  identity"
-                                aws  sts  get-caller-identity  ||  echo  "AWS  CLI  failed  -  Check  IAM  Role"
+                                    echo "--- System Check ---"
+                                    export AWS_EC2_METADATA_DISABLED=false
+                                    export AWS_METADATA_SERVICE_TIMEOUT=5
+                                    export AWS_METADATA_SERVICE_NUM_ATTEMPTS=3
+            
+                                    echo "1. Checking if Metadata is reachable via CLI context:"
+                                    AWS_CONFIG_FILE=/dev/null AWS_SHARED_CREDENTIALS_FILE=/dev/null aws sts get-caller-identity
+                                    echo "2. Current User:"
+                                    whoami
                                 '''
                         }
                 }
