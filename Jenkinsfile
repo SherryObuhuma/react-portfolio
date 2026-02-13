@@ -42,11 +42,11 @@ pipeline  {
                 stage('ECR  Login')  {
                         steps  {
                                 withCredentials([string(credentialsId:  'ecr-repository',  variable:  'REPO_SECRET')])  {        
-                                        sh  """
+                                        sh  '''
                                                 echo  "Logging  into  ECR..."
                                                 aws  ecr  get-login-password  --region  ${AWS_REGION}  |  \
                                                 docker  login  --username  AWS  --password-stdin  ${ECR_REGISTRY}
-                                        """
+                                        '''
                                 }
                         }
                 }
