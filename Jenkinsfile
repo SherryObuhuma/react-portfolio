@@ -3,7 +3,7 @@ pipeline  {
         
         environment  {
                 //  AWS  Configuration
-                AWS_REGION          =  credentials('aws-region')
+                AWS_REGION          =  'us-east-1'
                 IMAGE_REPO          =  credentials('ecr-repository')
                 ECR_REGISTRY      =  credentials('ecr-registry')
                 IMAGE_TAG            =  "v1.${BUILD_NUMBER}"
@@ -33,10 +33,10 @@ pipeline  {
                 
                 stage('Debug  Credentials'){
                         steps  {
-                                sh  """
+                                sh  '''
                                 echo  "Checking  AWS  CLI  identity"
                                 aws  sts  get-caller-identity  ||  echo  "AWS  CLI  failed  -  Check  IAM  Role"
-                                """
+                                '''
                         }
                 }
                 stage('ECR  Login')  {
@@ -53,16 +53,16 @@ pipeline  {
                 
                 stage('Pull  Cache  Images')  {
                         steps  {
-                                sh  """
+                                sh  '''
                                         docker  pull  ${FULL_IMAGE}:latest  ||  true
                                         docker  pull  ${FULL_IMAGE}:buildcache  ||  true
-                                """
+                                '''
                         }
                 }
                 
                 stage('Build  Image')  {
                         steps  {
-                                sh  """
+                                sh  '''
                                         export  DOCKER_BUILDKIT=1
                                         docker  build  \
                                             --cache-from  ${FULL_IMAGE}:latest  \
@@ -73,18 +73,18 @@ pipeline  {
                                             -t  ${FULL_IMAGE}:latest  \
                                             -t  ${FULL_IMAGE}:buildcache  \
                                             .
-                                """
+                                '''
                         }
                 }
                 
                 stage('Push  to  ECR')  {
                         steps  {
-                                sh  """
+                                sh  '''
                                         docker  push  ${FULL_IMAGE}:${FULL_VERSION}
                                         docker  push  ${FULL_IMAGE}:${IMAGE_TAG}
                                         docker  push  ${FULL_IMAGE}:latest
                                         docker  push  ${FULL_IMAGE}:buildcache
-                                """
+                                '''
                         }
                 }
                 
@@ -92,7 +92,7 @@ pipeline  {
                         steps  {
                                 script  {
                                         echo  "Deploying  ${FULL_VERSION}  to  EC2  instance  ${TARGET_INSTANCE_ID}"
-                                        sh  """
+                                        sh  '''
                                                 COMMAND_ID=\$(aws  ssm  send-command  \
                                                     --instance-ids  "${TARGET_INSTANCE_ID}"  \
                                                     --document-name  "AWS-RunShellScript"  \
@@ -110,19 +110,19 @@ pipeline  {
                                                 
                                                 echo  "SSM  Command  ID:  \$COMMAND_ID"
                                                 sleep  15
-                                        """
+                                        '''
                                 }
                         }
                 }
                 
                 stage('Cleanup  Jenkins  &  logout')  {
                         steps  {
-                                sh  """
+                                sh  '''
                                         docker  rmi  ${FULL_IMAGE}:${FULL_VERSION}  ||  true
                                         docker  rmi  ${FULL_IMAGE}:${IMAGE_TAG}  ||  true
                                         docker  logout  ${ECR_REGISTRY}  ||  true
                                         docker  image  prune  -f
-                                """
+                                '''
                         }
                 }
         }
