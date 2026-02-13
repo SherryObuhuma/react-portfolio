@@ -11,7 +11,7 @@ pipeline  {
                 FULL_IMAGE          =  "${ECR_REGISTRY}/${IMAGE_REPO}"
                 
                 //  EC2  Configuration
-                TARGET_INSTANCE_ID  =  credentials('ec2-instace-id')
+                TARGET_INSTANCE_ID  =  credentials('ec2-instance-id')
                 CONTAINER_NAME  =  "react-app"
                 CONTAINER_PORT  =  "80:3000"
         }
