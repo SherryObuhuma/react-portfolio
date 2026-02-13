@@ -203,7 +203,7 @@ pipeline {
             echo "Check logs above for details"
         }   
         always {
-            node{
+            node('any') {
                 sh 'docker logout ${ECR_REGISTRY} || true'
             }
         }
