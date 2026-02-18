@@ -1,0 +1,77 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to rollback to (e.g., 20240207-143022-123-a1b2c3d)'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  CONTAINER_NAME: react-app
+  CONTAINER_PORT: "80:3000"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Verify version exists
+      run: |
+        echo "Checking if version ${{ inputs.version }} exists in ECR..."
+        aws ecr describe-images \
+          --repository-name ${{ env.ECR_REPOSITORY }} \
+          --image-ids imageTag=${{ inputs.version }} \
+          --region ${{ env.AWS_REGION }}
+
+    - name: Rollback to version ${{ inputs.version }}
+      env:
+        FULL_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ inputs.version }}
+        INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+      run: |
+        COMMAND_ID=$(aws ssm send-command \
+          --instance-ids "${INSTANCE_ID}" \
+          --document-name "AWS-RunShellScript" \
+          --parameters 'commands=[
+            "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
+            "docker pull ${{ env.FULL_IMAGE }}",
+            "docker stop ${{ env.CONTAINER_NAME }} || true",
+            "docker rm ${{ env.CONTAINER_NAME }} || true",
+            "docker run -d --name ${{ env.CONTAINER_NAME }} --restart unless-stopped -p ${{ env.CONTAINER_PORT }} ${{ env.FULL_IMAGE }}",
+            "echo ${{ inputs.version }} > /var/app/current-version.txt",
+            "docker image prune -f"
+          ]' \
+          --region ${{ env.AWS_REGION }} \
+          --output text \
+          --query 'Command.CommandId')
+        
+        echo "Rollback Command ID: $COMMAND_ID"
+        sleep 15
+        
+        STATUS=$(aws ssm get-command-invocation \
+          --command-id "$COMMAND_ID" \
+          --instance-id "${INSTANCE_ID}" \
+          --region ${{ env.AWS_REGION }} \
+          --query 'Status' \
+          --output text)
+        
+        if [ "$STATUS" != "Success" ]; then
+          echo "Rollback failed!"
+          exit 1
+        fi
+        
+        echo "✅ Rollback to ${{ inputs.version }} successful!"
