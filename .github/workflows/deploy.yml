@@ -49,16 +49,7 @@ jobs:
         aws ecr create-repository \
           --repository-name "${{ env.ECR_REPOSITORY }}" \
           --region ${{ env.AWS_REGION }} \
-          2>/dev/null || true
-
-    - name: Ensure ECR repository exists        
-      run: |
-        aws ecr describe-repositories \
-          --repository-names "${{ env.ECR_REPOSITORY }}" \
-          --region ${{ env.AWS_REGION }} \
-        || aws ecr create-repository \
-          --repository-name "${{ env.ECR_REPOSITORY }}" \
-          --region ${{ env.AWS_REGION }}   
+          2>/dev/null || true  
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
