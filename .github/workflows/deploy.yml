@@ -43,12 +43,13 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      
-    - name: Debug ECR values        
+
+    - name: Create ECR repository if not exists
       run: |
-        echo "Registry: ${{ env.ECR_REGISTRY }}"
-        echo "Repository: ${{ env.ECR_REPOSITORY }}"
-        aws ecr describe-repositories --region ${{ env.AWS_REGION }}
+        aws ecr create-repository \
+          --repository-name "${{ env.ECR_REPOSITORY }}" \
+          --region ${{ env.AWS_REGION }} \
+          2>/dev/null || true
 
     - name: Ensure ECR repository exists        
       run: |
