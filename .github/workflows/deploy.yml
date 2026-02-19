@@ -43,6 +43,12 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      
+    - name: Debug ECR values        
+      run: |
+        echo "Registry: ${{ env.ECR_REGISTRY }}"
+        echo "Repository: ${{ env.ECR_REPOSITORY }}"
+        aws ecr describe-repositories --region ${{ env.AWS_REGION }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
