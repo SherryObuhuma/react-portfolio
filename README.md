@@ -2,25 +2,30 @@
 
 An automated CI/CD pipeline that automatically builds Docker images, pushes them to AWS ECR, and deploys to EC2 instance using GitHub Actions all without hardcoded secrets or SSH keys.
 
-🎯 **What This Does**
+### 🎯 What This Does
 
 Every time you push code to GitHub:
-✅ Automatically builds your app
-✅ Packages it in a Docker container
-✅ Stores it in AWS ECR
-✅ Deploys to your EC2 Server
-✅ Makes it live for users
+* ✅ Automatically builds your app
+* ✅ Packages it in a Docker container
+* ✅ Stores it in AWS ECR
+* ✅ Deploys to your EC2 Server
+* ✅ Makes it live for users
 
 Total time: 5 minutes (all automatic!)
 
-📖 **How It Works (Simple Explanation)**
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐      ┌──────────────┐
-│  You Push   │  →   │   GitHub     │  →   │  AWS Stores │  →   │  Your Server │
-│   Code      │      │   Builds It  │      │  Container  │      │  Runs It     │
-└─────────────┘      └──────────────┘      └─────────────┘      └──────────────┘
-   10 seconds           3-5 minutes           30 seconds            Live! ✨
+### 📖 How It Works (Simple Explanation)
 
-✨ **Features**
+graph LR
+    A[<b>1. Push Code</b><br/>10 seconds] --> B[<b>2. GitHub Builds It</b><br/>3-5 minutes]
+    B --> C[<b>3. AWS Stores Container</b><br/>30 seconds]
+    C --> D[<b>4. Your Server Runs It</b><br/>Live! ✨]
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#bbf,stroke:#333,stroke-width:2px
+    style C fill:#dfd,stroke:#333,stroke-width:2px
+    style D fill:#ffd,stroke:#333,stroke-width:2px
+
+### ✨ Features
 - 💰 FREE CI/CD - GitHub Actions
 - ✅ Zero Secrets - Uses IAM roles.No access keys or SSH keys in code.
 - ⚡ 50%+ Faster Builds - Docker layer caching with BuildKit
@@ -42,278 +47,162 @@ Total time: 5 minutes (all automatic!)
     YOU                GITHUB              AWS             USERS
      │                   │                  │                │
      │ git push          │                  │                │
-     ├──────────────────▶│                  │                │
+     ├──────────────────>│                  │                │
      │                   │                  │                │
      │                   │ Build app        │                │
      │                   │ (3-5 min)        │                │
      │                   │                  │                │
      │                   │ Store it         │                │
-     │                   ├─────────────────▶│                │
+     │                   ├─────────────────>│                │
      │                   │                  │                │
      │                   │ Deploy it        │                │
-     │                   ├─────────────────▶│                │
+     │                   ├─────────────────>│                │
      │                   │                  │                │
      │                   │                  │ Visit site     │
-     │                   │                  │◀───────────────┤
+     │                   │                  │<───────────────┤
      │                   │                  │                │
      │ ✅ Done!          │                  │ See changes! ✓ │
      │                   │                  │                │
 
-
 ### High Level Architecture
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           CI/CD PIPELINE FLOW                            │
-└─────────────────────────────────────────────────────────────────────────┘
+sequenceDiagram
+    autonumber
+    actor Dev as Developer
+    participant GH as GitHub
+    participant GHA as GitHub Actions
+    participant ECR as AWS ECR
+    participant EC2 as EC2 App Server
+    actor User as Users
 
-    Developer            GitHub              GitHub Actions      AWS ECR          EC2 App Server    Users
-    ─────────            ──────              ──────────────      ───────          ──────────────    ─────
-        │                   │                      │                │                   │             │
-        │  1. git push      │                      │                │                   │             │
-        ├──────────────────▶│                      │                │                   │             │
-        │                   │                      │                │                   │             │
-        │                   │  2. Webhook          │                │                   │             │
-        │                   │     (instant)        │                │                   │             │
-        │                   ├─────────────────────▶│                │                   │             │
-        │                   │                      │                │                   │             │
-        │                   │                      │  3. Build      │                   │             │
-        │                   │                      │     Docker     │                   │             │
-        │                   │                      │     (~3 min)   │                   │             │
-        │                   │                      │                │                   │             │
-        │                   │                      │  4. Push       │                   │             │
-        │                   │                      │     Image      │                   │             │
-        │                   │                      ├───────────────▶│                   │             │
-        │                   │                      │                │                   │             │
-        │                   │                      │  5. Deploy!    │                   │             │
-        │                   │                      ├───────────────────────────────────▶│             │
-        │                   │                      │                │                   │             │
-        │                   │                      │                │  6. Pull Image    │             │
-        │                   │                      │                │◀──────────────────┤             │
-        │                   │                      │                │                   │             │
-        │                   │                      │                │  7. Run Container │             │
-        │                   │                      │                │                   │             │
-        │                   │                      │  8. Verify ✓   │                   │             │
-        │                   │                      │◀───────────────────────────────────┤             │
-        │                   │                      │                │                   │             │
-        │  9. ✅ Done!      │                      │                │                   │  10. Visit  │
-        │◀──────────────────┤                      │                │                   │     Site    │
-        │                   │                      │                │                   │◀────────────┤
-        │                   │                      │                │                   │             │
+    Note over Dev, User: CI/CD PIPELINE FLOW
+
+    Dev->>GH: git push
+    GH->>GHA: Webhook (instant)
+    activate GHA
+    Note right of GHA: 3. Build Docker (~3 min)
+    GHA->>ECR: 4. Push Image
+    GHA->>EC2: 5. Deploy!
+    deactivate GHA
+
+    EC2->>ECR: 6. Pull Image
+    Note right of EC2: 7. Run Container
+    EC2-->>GHA: 8. Verify ✓
+    
+    GH-->>Dev: 9. ✅ Done!
+    User->>EC2: 10. Visit Site
 
 ### Detailed Component Architecture
 
-┌──────────────────────────┐
-│     GitHub Repository     │
-│  ┌─────────────────────┐ │
-│  │  .github/workflows/ │ │
-│  │  ├─ deploy.yml      │ │  ← Main deployment workflow
-│  │  └─ rollback.yml    │ │  ← Rollback workflow
-│  │   Dockerfile        │ │
-│  │   Source Code       │ │
-│  └─────────────────────┘ │
-└────────────┬─────────────┘
-             │ Push Event
-             ▼
-┌────────────────────────────────────────────────────────┐
-│         GitHub Actions (FREE!)                          │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  Runner: ubuntu-latest (GitHub's servers)        │ │
-│  │  IAM Role: GitHubActionsDeployRole (OIDC)       │ │
-│  │  • No access keys! 🔐                           │ │
-│  │  • Temporary credentials (1 hour)               │ │
-│  └──────────────────────────────────────────────────┘ │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  Pipeline Stages:                                │ │
-│  │  1. Checkout Code                                │ │
-│  │  2. AWS Auth (OIDC - no keys!)                  │ │
-│  │  3. ECR Login                                    │ │
-│  │  4. Build Docker Image (BuildKit + cache)       │ │
-│  │  5. Push to ECR                                  │ │
-│  │  6. Deploy via SSM (no SSH!)                    │ │
-│  │  7. Verify Deployment                            │ │
-│  └──────────────────────────────────────────────────┘ │
-│                                                         │
-│  Cost: FREE (2,000 minutes/month) 🎉                   │
-└────────────┬───────────────────────┬───────────────────┘
-             │                       │
-             │ Push Image            │ SSM Command
-             │                       │
-             ▼                       ▼
-┌─────────────────────────┐   ┌──────────────────────────────────┐
-│      AWS ECR             │   │    Application EC2 Instance       │
-│  ┌────────────────────┐ │   │  ┌────────────────────────────┐  │
-│  │  Repository:        │ │   │  │  IAM Role: AppEC2Role      │  │
-│  │  react-app          │ │   │  │  • ECRReadOnly             │  │
-│  │                     │ │   │  │  • SSMManagedInstanceCore  │  │
-│  │  Images:            │ │   │  └────────────────────────────┘  │
-│  │  • v1.123           │ │   │                                   │
-│  │  • 20240207-...     │ │   │  ┌────────────────────────────┐  │
-│  │  • latest           │ │   │  │  Docker Container           │  │
-│  │  • buildcache       │ │   │  │  ┌──────────────────────┐  │  │
-│  │                     │ │   │  │  │  React Application   │  │  │
-│  │  Lifecycle Policy:  │ │   │  │  │  Port: 3000          │  │  │
-│  │  Keep last 15       │ │   │  │  └──────────────────────┘  │  │
-│  │                     │ │   │  │                             │  │
-│  │  Image Scanning:    │ │   │  │  Mapped to Host: 80        │  │
-│  │  ✅ Enabled         │ │   │  └────────────────────────────┘  │
-│  └────────────────────┘ │   │                                   │
-│                          │   │  Instance Type: t3.micro          │
-│  Cost: ~$0.50/month      │   │  Storage: 20 GB gp3               │
-└────────────┬─────────────┘   │  Security Group: app-sg (port 80) │
-             │                  │  Cost: ~$8/month                  │
-             │ Pull Image       └───────────────┬───────────────────┘
-             └──────────────────────────────────┘
-                                               │
-                                               │ HTTP Traffic
-                                               ▼
-                                        ┌─────────────┐
-                                        │    Users    │
-                                        │  (Internet) │
-                                        └─────────────┘
+flowchart TD
+    subgraph Repo [GitHub Repository]
+        direction TB
+        W1[deploy.yml] --- W2[rollback.yml]
+        SRC[Source Code + Dockerfile]
+    end
+
+    Repo -- "Push Event" --> GHA
+
+    subgraph GHA [GitHub Actions - Free!]
+        direction TB
+        Runner["Runner: ubuntu-latest<br/>IAM: OIDC (No Keys! 🔐)"]
+        Stages["<b>Pipeline Stages:</b><br/>1. Checkout<br/>2. AWS Auth<br/>3. ECR Login<br/>4. Build Image<br/>5. Push to ECR<br/>6. Deploy via SSM<br/>7. Verify"]
+    end
+
+    GHA -- "Push Image" --> ECR
+    GHA -- "SSM Command" --> EC2
+
+    subgraph ECR [AWS ECR]
+        direction TB
+        RepoName[<b>Repo: react-app</b>]
+        Images["• v1.123<br/>• latest<br/>• buildcache"]
+        Policy["Lifecycle: Keep last 15<br/>Scanning: ✅ Enabled"]
+    end
+
+    subgraph EC2 [Application EC2 Instance]
+        direction TB
+        IAM["IAM: ECRReadOnly + SSMManaged"]
+        subgraph Docker [Docker Container]
+            App["React Application<br/>Port: 3000 -> 80"]
+        end
+        Specs["Type: t3.micro<br/>Storage: 20GB gp3"]
+    end
+
+    ECR -- "Pull Image" --> EC2
+    EC2 --> Users((Users<br/>Internet))
+
+    %% Styling
+    style Repo fill:#f9f9f9,stroke:#333
+    style GHA fill:#e1f5fe,stroke:#01579b
+    style ECR fill:#fff3e0,stroke:#e65100
+    style EC2 fill:#e8f5e9,stroke:#1b5e20
+    style Users fill:#fff,stroke:#333
 
 ### Security Architecture
 
-┌──────────────────────────────────────────────────────────────────────┐
-│                        SECURITY & AUTHENTICATION                      │
-└──────────────────────────────────────────────────────────────────────┘
+sequenceDiagram
+    participant GHA as GitHub Actions Runner
+    participant OIDC as GitHub OIDC Provider
+    participant AWS as AWS Security Token Service (STS)
+    participant ECR as AWS ECR
 
-┌──────────────────────────────────────────────────────────────────────┐
-│                          IAM ROLES (No Keys!)                          │
-└──────────────────────────────────────────────────────────────────────┘
+    Note over GHA, ECR: Secure OIDC Handshake (Keyless)
 
-    ┌─────────────────────────────────────────────────────────────┐
-    │  GitHub Actions OIDC: GitHubActionsDeployRole               │
-    │                                                              │
-    │  Authentication: OpenID Connect (OIDC)                       │
-    │  ├─ No access keys stored anywhere! 🔐                      │
-    │  ├─ Temporary credentials (1 hour validity)                 │
-    │  ├─ Auto-expires automatically                              │
-    │  └─ Cannot be reused outside GitHub Actions                 │
-    │                                                              │
-    │  Permissions:                                                │
-    │  ✓ Push/Pull images to/from ECR                            │
-    │  ✓ Send SSM commands to Application EC2                    │
-    │  ✓ Describe EC2 instances                                  │
-    │                                                              │
-    │  Trust Policy: Only trusts GitHub OIDC provider             │
-    └─────────────────────────────────────────────────────────────┘
-
-    ┌─────────────────────────────────────────────────────────────┐
-    │  Application EC2 Instance Profile: AppEC2Role               │
-    │                                                              │
-    │  Permissions:                                                │
-    │  ✓ Pull images from ECR (read-only)                        │
-    │  ✓ Receive SSM commands                                    │
-    │                                                              │
-    │  Trust Policy: ec2.amazonaws.com can assume this role       │
-    └─────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────┐
-│                    DEPLOYMENT SECURITY (SSM)                          │
-└──────────────────────────────────────────────────────────────────────┘
-
-    Traditional SSH:                    SSM (What we use):
-    ❌ Requires SSH keys                ✅ No keys needed
-    ❌ Keys can be stolen               ✅ IAM role-based
-    ❌ Port 22 open                     ✅ No inbound ports
-    ❌ Manual key rotation              ✅ Automatic auth
-    ❌ Hard to audit                    ✅ Full CloudTrail logs
+    GHA->>OIDC: Request JWT (Identity Token)
+    OIDC-->>GHA: Returns Signed JWT
+    GHA->>AWS: Present JWT + Role ARN
+    AWS->>OIDC: Verify Signature & Claims
+    OIDC-->>AWS: Verified!
+    AWS-->>GHA: Short-lived Temporary Credentials (1hr)
+    GHA->>ECR: Push/Pull using Temp Token 🔐
 
 ### Data Flow Infrastructure
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          BUILD & DEPLOY FLOW                             │
-└─────────────────────────────────────────────────────────────────────────┘
+flowchart TD
+    Start([1. Code Commit]) --> Trigger[2. GitHub Actions Trigger]
+    
+    subgraph BuildStage [3. Build & Cache Stage]
+        direction TB
+        CacheCheck{Cache Found?}
+        CacheCheck -- Yes --> FastBuild[Fast Build: 2-4 min<br/>Reuse Layers]
+        CacheCheck -- No --> FullBuild[Full Build: 5-8 min<br/>Fresh NPM Install]
+        FastBuild --> Tagging
+        FullBuild --> Tagging
+    end
 
-1. CODE COMMIT
-   ───────────
-   Developer ──git push──▶ GitHub Repository
-                                │
-                                │ Webhook (instant)
-                                ▼
-2. BUILD TRIGGER
-   ─────────────
-   GitHub Actions detects change ──▶ Start Workflow
+    subgraph Tagging [4. Image Tagging]
+        T1[TIMESTAMP-SHA]
+        T2[Semantic v1.0]
+        T3[latest]
+        T4[buildcache]
+    end
 
+    Tagging --> ECR[(5. AWS ECR Repository)]
 
-3. BUILD STAGE (with caching)
-   ──────────────────────────
-   
-   ┌─────────────────────────────────────────────────┐
-   │  First Build (No cache)                          │
-   │  Time: ~5-8 minutes                              │
-   │                                                  │
-   │  1. Pull base image (node:18-alpine) ─▶ 2 min  │
-   │  2. Install dependencies             ─▶ 3 min  │
-   │  3. Build application                ─▶ 2 min  │
-   │  4. Create final image               ─▶ 1 min  │
-   │                                                  │
-   │  Total: ~8 minutes                               │
-   └─────────────────────────────────────────────────┘
+    ECR --> SSM[6. Deployment via AWS SSM]
 
-   ┌─────────────────────────────────────────────────┐
-   │  Subsequent Builds (With cache)                  │
-   │  Time: ~2-4 minutes (50-60% faster!)            │
-   │                                                  │
-   │  1. Reuse cached layers              ─▶ 30 sec  │
-   │  2. Only rebuild changed layers      ─▶ 1 min   │
-   │  3. Create final image               ─▶ 30 sec  │
-   │  4. Tag & push                       ─▶ 1 min   │
-   │                                                  │
-   │  Total: ~3 minutes                               │
-   └─────────────────────────────────────────────────┘
+    subgraph EC2 [7. Commands on Server]
+        direction TB
+        P1[ECR Login] --> P2[Pull Image]
+        P2 --> P3[Stop/Remove Old]
+        P3 --> P4[Start New]
+        P4 --> P5[Clean Local Images]
+    end
 
+    SSM --> EC2
+    EC2 --> Verify{8. Verification}
 
-4. IMAGE TAGGING
-   ─────────────
-   
-   Single build creates 4 tags:
-   
-   20240207-143022-456-a1b2c3d  ←── Full version (primary)
-   v1.456                        ←── Semantic version
-   latest                        ←── Always newest
-   buildcache                    ←── For layer caching
-   
-   All pushed to ECR simultaneously
+    Verify -- Success --> Done[✅ Live!]
+    Verify -- Fail --> Rollback[⚠️ Trigger Rollback]
 
-
-5. DEPLOYMENT STAGE
-   ────────────────
-   
-   GitHub Actions ──SSM Command──▶ Application EC2
-   
-   Commands executed on EC2:
-   ┌────────────────────────────────────────┐
-   │ 1. ECR Login (using IAM role)          │
-   │ 2. Pull new image                      │
-   │ 3. Stop old container                  │
-   │ 4. Remove old container                │
-   │ 5. Start new container                 │
-   │ 6. Save version to file                │
-   │ 7. Clean up old images                 │
-   │ 8. Verify container is running         │
-   └────────────────────────────────────────┘
-
-
-6. VERIFICATION
-   ────────────
-   
-   GitHub Actions checks:
-   ✓ Container is running
-   ✓ Health check passes
-   ✓ Version file updated
-   
-   If any check fails → Deployment marked as FAILED
-
-
-7. USER ACCESS
-   ───────────
-   
-   Internet User ──HTTP──▶ App EC2:80 ──▶ Docker Container:3000
-                                          ──▶ React App
+    %% Styling
+    style BuildStage fill:#f5f5f5,stroke:#333
+    style ECR fill:#ff9900,color:#fff,stroke:#e65100
+    style EC2 fill:#e8f5e9,stroke:#2e7d32
+    style Verify fill:#fff9c4,stroke:#fbc02d
 
 ### Rollback Architecture
+
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         ROLLBACK MECHANISM                               │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -392,17 +281,21 @@ Security groups
 2. Click New repository secret
 3. Add these 5 secrets:
 
-NAME                  WHAT TO PUT                  WHERE TO GET IT
-AWS_REGION            us-east-1                    Your AWS region
-AWS_ROLE_ARN          arn:aws:iam::123..           From AWS IAM
-ECR_REGISTRY          123.dkr.ecr.us-east-1...     From AWS ECR
-ECR_REPOSITORY        react-app                    Your ECR repo name
-EC2_INSTANCE_ID       i.0ab...                     From AWS EC2
+### 🛠️ Required GitHub Secrets
+
+| Secret Name | What to Put | Where to Get It |
+| :--- | :--- | :--- |
+| **`AWS_REGION`** | `us-east-1` | Your preferred AWS region |
+| **`AWS_ROLE_ARN`** | `arn:aws:iam::123...` | From AWS IAM Role (OIDC) |
+| **`ECR_REGISTRY`** | `123.dkr.ecr...` | From AWS ECR Console |
+| **`ECR_REPOSITORY`** | `react-app` | Your ECR repository name |
+| **`EC2_INSTANCE_ID`** | `i-0ab...` | From AWS EC2 Console |
 
 ### 4. Workflow Files Already Included
 The repository includes:
-- .github/workflows/deploy.yml - Main deployment
-- .github/workflows/rollback.yml - Rollback workflow``
+The repository includes:
+- [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml) - Main deployment
+- [`.github/workflows/rollback.yml`](./.github/workflows/rollback.yml) - Rollback workflow
 
 ### 5. Deploy
 ```
@@ -418,59 +311,61 @@ git push origin main
 
 ## ⚙️ How It Works
 ### Workflow Stages Explained
-stage('Checkout')           # Clone repo, get git commit SHA
-stage('AWS Auth OIDC')      # Get temporary credentials (no keys!)
-stage('ECR Login')          # Authenticate to ECR (IAM role)
-stage('Pull Cache')         # Download previous build layers
-stage('Build Image')        # Build with BuildKit caching
-stage('Push to ECR')        # Upload with 4 different tags
-stage('Deploy via SSM')     # Remote deployment (no SSH)
-stage('Verify')             # Confirm container is running
+- stage('Checkout')           # Clone repo, get git commit SHA
+- stage('AWS Auth OIDC')      # Get temporary credentials (no keys!)
+- stage('ECR Login')          # Authenticate to ECR (IAM role)
+- stage('Pull Cache')         # Download previous build layers
+- stage('Build Image')        # Build with BuildKit caching
+- stage('Push to ECR')        # Upload with 4 different tags
+- stage('Deploy via SSM')     # Remote deployment (no SSH)
+- stage('Verify')             # Confirm container is running
 
 ### Version Tagging Strategy
 Each build creates a version like:
+```
 20240207-143022-456-a1b2c3d
 │        │      │   │
 │        │      │   └─ Git commit (7 chars)
 │        │      └───── GitHub run number
 │        └──────────── Timestamp (HHmmss)
 └───────────────────── Date (YYYYMMDD)
+```
 
 Why this format?
-✅ Chronologically sortable
-✅ Unique for every build
-✅ Easy to trace back to code
-✅ Human-readable
++ ✅ Chronologically sortable
++ ✅ Unique for every build
++ ✅ Easy to trace back to code
++ ✅ Human-readable
 
 ### Docker Layer Caching
 How it saves 50% time:
 
-First build: Download everything
+1. First build: Download everything
 
-   FROM node:18-alpine          ← Downloaded (100 MB)
-   COPY package.json            ← New layer
-   RUN npm install              ← Downloaded deps (200 MB)
-   COPY . .                     ← New layer
-   RUN npm build                ← Build (2 min)
+   - FROM node:18-alpine          ← Downloaded (100 MB)
+   - COPY package.json            ← New layer
+   - RUN npm install              ← Downloaded deps (200 MB)
+   - COPY . .                     ← New layer
+   - RUN npm build                ← Build (2 min)
 
-Second build (no code changes):
+2. Second build (no code changes):
 
-   FROM node:18-alpine          ← CACHED ✓ (0 sec)
-   COPY package.json            ← CACHED ✓ (0 sec)
-   RUN npm install              ← CACHED ✓ (0 sec)
-   COPY . .                     ← CACHED ✓ (0 sec)
-   RUN npm build                ← CACHED ✓ (0 sec)
+   - FROM node:18-alpine          ← CACHED ✓ (0 sec)
+   - COPY package.json            ← CACHED ✓ (0 sec)
+   - RUN npm install              ← CACHED ✓ (0 sec)
+   - COPY . .                     ← CACHED ✓ (0 sec)
+   - RUN npm build                ← CACHED ✓ (0 sec)
 
-Second build (code changed):
+3. Second build (code changed):
 
-   FROM node:18-alpine          ← CACHED ✓ (0 sec)
-   COPY package.json            ← CACHED ✓ (0 sec)
-   RUN npm install              ← CACHED ✓ (0 sec)
-   COPY . .                     ← REBUILD (new code)
-   RUN npm build                ← REBUILD (1 min)
+   - FROM node:18-alpine          ← CACHED ✓ (0 sec)
+   - COPY package.json            ← CACHED ✓ (0 sec)
+   - RUN npm install              ← CACHED ✓ (0 sec)
+   - COPY . .                     ← REBUILD (new code)
+   - RUN npm build                ← REBUILD (1 min)
 
-   ## 🔄 Rollback
-   ### List Available Versions
+## 🔄 Rollback
+### List Available Versions
    ```
    ./scripts/list-versions.sh
 
@@ -486,35 +381,36 @@ Second build (code changed):
 ### Rollback to Previous Version
 GitHub Actions Workflow:
 
-Go to Actions tab
-Click Rollback Deployment workflow
-Click Run workflow
-Enter version: 20240207-120000-455-xyz1234
-Click Run workflow
+1. Go to Actions tab
+2. Click Rollback Deployment workflow
+3. Click Run workflow
+4. Enter version: 20240207-120000-455-xyz1234
+5. Click Run workflow
 
 ## 💰 Cost Analysis
 **Cost Optimization Options**
-Option 1: Spot Instances (Save 70%)
+
+* Option 1: Spot Instances (Save 70%)
 
 App: t3.micro Spot = $2/mo
-Total: ~$3.50/mo (see SPOT_INSTANCES_GUIDE.md)
+Total: ~$3.50/mo 
 
-Option 2: Smaller Instances
+* Option 2: Smaller Instances
 
 App: t3.nano = $4/mo
 Total: ~$5/mo
 
-Option 3: Stop when not in use
+* Option 3: Stop when not in use
 
 Only run during work hours (8h/day, 5 days/week)
 Total: ~$2/mo
 
-GitHub Actions Free Tier
+* GitHub Actions Free Tier
 
-✅ 2,000 minutes/month (public repos)
-✅ 500 MB storage
-✅ Unlimited for public repos
-Your typical build: ~3-5 minutes
+- 2,000 minutes/month (public repos)
+- 500 MB storage
+- Unlimited for public repos
+Typical build: ~3-5 minutes
 
 ## 🙏 Acknowledgments
 
