@@ -2,7 +2,7 @@
 FROM node:18-alpine AS build
 
 # Set the working directory inside the container
-WORKDIR /app/src/
+WORKDIR /app
 
 # Copy package files
 COPY app/src/package*.json ./
@@ -12,6 +12,7 @@ RUN npm install
 
 # Copy source code
 COPY app/src/ .
+COPY app/public/ ./public
 
 RUN npm run build
 
