@@ -39,10 +39,7 @@ graph LR
 ## 🏗️ Architecture
 
 ### The Simple Version
-
-┌─────────────────────────────────────────────────────────┐
-│                   HOW IT ALL WORKS                      │
-└─────────────────────────────────────────────────────────┘
+                     **HOW IT ALL WORKS**
 
     YOU                GITHUB              AWS             USERS
      │                   │                  │                │
@@ -66,140 +63,147 @@ graph LR
 
 ### High Level Architecture
 
-sequenceDiagram
-    autonumber
-    actor Dev as Developer
-    participant GH as GitHub
-    participant GHA as GitHub Actions
-    participant ECR as AWS ECR
-    participant EC2 as EC2 App Server
-    actor User as Users
+STEP 1: You Push Code
+-----------------------
+Developer --> git push --> GitHub Repository
 
-    Note over Dev, User: CI/CD PIPELINE FLOW
+STEP 2: GitHub Actions Builds
+------------------------------
+GitHub Repository --> webhook --> GitHub Actions
+  |
+  |-- Checkout code
+  |-- Authenticate with AWS (OIDC - no keys!)
+  |-- Build Docker image (3-5 min)
+  |-- Push to ECR
+  |-- Deploy to EC2 via SSM
+  |-- Verify deployment
+  |
+  v
+SUCCESS!
 
-    Dev->>GH: git push
-    GH->>GHA: Webhook (instant)
-    activate GHA
-    Note right of GHA: 3. Build Docker (~3 min)
-    GHA->>ECR: 4. Push Image
-    GHA->>EC2: 5. Deploy!
-    deactivate GHA
+STEP 3: Deployment
+------------------
+GitHub Actions --> AWS ECR (stores image)
+GitHub Actions --> EC2 Server (via SSM - no SSH!)
 
-    EC2->>ECR: 6. Pull Image
-    Note right of EC2: 7. Run Container
-    EC2-->>GHA: 8. Verify ✓
-    
-    GH-->>Dev: 9. ✅ Done!
-    User->>EC2: 10. Visit Site
+STEP 4: EC2 Runs Your App
+--------------------------
+EC2 pulls image from ECR
+EC2 stops old container
+EC2 starts new container
+App is now live!
+
+STEP 5: Users Access
+--------------------
+Users --> http://your-server.com --> EC2:80 --> Docker:3000 --> React App
+
+Total Time: 3-5 minutes from push to live!
 
 ### Detailed Component Architecture
 
-flowchart TD
-    subgraph Repo [GitHub Repository]
-        direction TB
-        W1[deploy.yml] --- W2[rollback.yml]
-        SRC[Source Code + Dockerfile]
-    end
+STEP 1: You Push Code
+-----------------------
+Developer --> git push --> GitHub Repository
 
-    Repo -- "Push Event" --> GHA
+STEP 2: GitHub Actions Builds
+------------------------------
+GitHub Repository --> webhook --> GitHub Actions
+  |
+  |-- Checkout code
+  |-- Authenticate with AWS (OIDC - no keys!)
+  |-- Build Docker image (3-5 min)
+  |-- Push to ECR
+  |-- Deploy to EC2 via SSM
+  |-- Verify deployment
+  |
+  v
+SUCCESS!
 
-    subgraph GHA [GitHub Actions - Free!]
-        direction TB
-        Runner["Runner: ubuntu-latest<br/>IAM: OIDC (No Keys! 🔐)"]
-        Stages["<b>Pipeline Stages:</b><br/>1. Checkout<br/>2. AWS Auth<br/>3. ECR Login<br/>4. Build Image<br/>5. Push to ECR<br/>6. Deploy via SSM<br/>7. Verify"]
-    end
+STEP 3: Deployment
+------------------
+GitHub Actions --> AWS ECR (stores image)
+GitHub Actions --> EC2 Server (via SSM - no SSH!)
 
-    GHA -- "Push Image" --> ECR
-    GHA -- "SSM Command" --> EC2
+STEP 4: EC2 Runs Your App
+--------------------------
+EC2 pulls image from ECR
+EC2 stops old container
+EC2 starts new container
+App is now live!
 
-    subgraph ECR [AWS ECR]
-        direction TB
-        RepoName[<b>Repo: react-app</b>]
-        Images["• v1.123<br/>• latest<br/>• buildcache"]
-        Policy["Lifecycle: Keep last 15<br/>Scanning: ✅ Enabled"]
-    end
+STEP 5: Users Access
+--------------------
+Users --> http://your-server.com --> EC2:80 --> Docker:3000 --> React App
 
-    subgraph EC2 [Application EC2 Instance]
-        direction TB
-        IAM["IAM: ECRReadOnly + SSMManaged"]
-        subgraph Docker [Docker Container]
-            App["React Application<br/>Port: 3000 -> 80"]
-        end
-        Specs["Type: t3.micro<br/>Storage: 20GB gp3"]
-    end
-
-    ECR -- "Pull Image" --> EC2
-    EC2 --> Users((Users<br/>Internet))
-
-    %% Styling
-    style Repo fill:#f9f9f9,stroke:#333
-    style GHA fill:#e1f5fe,stroke:#01579b
-    style ECR fill:#fff3e0,stroke:#e65100
-    style EC2 fill:#e8f5e9,stroke:#1b5e20
-    style Users fill:#fff,stroke:#333
+Total Time: 3-5 minutes from push to live!
 
 ### Security Architecture
+**OIDC Authentication Flow (No Access Keys!):**
+1. GitHub Actions requests JWT token from GitHub
+2. GitHub provides JWT token (valid 1 hour)
+3. GitHub Actions sends JWT to AWS STS
+4. AWS validates token with GitHub OIDC provider
+5. AWS provides temporary credentials (expires in 1 hour)
+6. GitHub Actions uses temp credentials to access AWS
+7. Credentials auto-expire after 1 hour
 
-sequenceDiagram
-    participant GHA as GitHub Actions Runner
-    participant OIDC as GitHub OIDC Provider
-    participant AWS as AWS Security Token Service (STS)
-    participant ECR as AWS ECR
+Result: Zero access keys stored anywhere!
 
-    Note over GHA, ECR: Secure OIDC Handshake (Keyless)
+**IAM Roles:**
+GitHubActionsDeployRole (attached via OIDC)
+  - Permissions:
+    * Push/pull images to/from ECR
+    * Send SSM commands to EC2
+    * Describe EC2 instances
+  - Authentication: Temporary credentials only
+  - Validity: 1 hour (auto-expires)
+  - Trust: Only GitHub OIDC provider
 
-    GHA->>OIDC: Request JWT (Identity Token)
-    OIDC-->>GHA: Returns Signed JWT
-    GHA->>AWS: Present JWT + Role ARN
-    AWS->>OIDC: Verify Signature & Claims
-    OIDC-->>AWS: Verified!
-    AWS-->>GHA: Short-lived Temporary Credentials (1hr)
-    GHA->>ECR: Push/Pull using Temp Token 🔐
+AppEC2Role (attached to EC2 instance)
+  - Permissions:
+    * Pull images from ECR (read-only)
+    * Receive SSM commands
+    * Report status to SSM
+  - Authentication: Instance profile
+  - Trust: EC2 service
 
 ### Data Flow Infrastructure
+**Complete Pipeline Flow**
+Step 1: CODE COMMIT
+  You --> git push --> GitHub
 
-flowchart TD
-    Start([1. Code Commit]) --> Trigger[2. GitHub Actions Trigger]
-    
-    subgraph BuildStage [3. Build & Cache Stage]
-        direction TB
-        CacheCheck{Cache Found?}
-        CacheCheck -- Yes --> FastBuild[Fast Build: 2-4 min<br/>Reuse Layers]
-        CacheCheck -- No --> FullBuild[Full Build: 5-8 min<br/>Fresh NPM Install]
-        FastBuild --> Tagging
-        FullBuild --> Tagging
-    end
+Step 2: BUILD TRIGGER  
+  GitHub --> Webhook --> GitHub Actions (instant)
 
-    subgraph Tagging [4. Image Tagging]
-        T1[TIMESTAMP-SHA]
-        T2[Semantic v1.0]
-        T3[latest]
-        T4[buildcache]
-    end
+Step 3: BUILD (with caching)
+  First Build:        3-5 minutes
+  Cached Build:       1-3 minutes (50% faster!)
 
-    Tagging --> ECR[(5. AWS ECR Repository)]
+Step 4: TAGGING
+  Creates 4 tags:
+  - 20240207-143022-456-a1b2c3d (full version)
+  - v1.456 (semantic)
+  - latest (current)
+  - buildcache (for speed)
 
-    ECR --> SSM[6. Deployment via AWS SSM]
+Step 5: PUSH TO ECR
+  GitHub Actions --> ECR (30 seconds)
 
-    subgraph EC2 [7. Commands on Server]
-        direction TB
-        P1[ECR Login] --> P2[Pull Image]
-        P2 --> P3[Stop/Remove Old]
-        P3 --> P4[Start New]
-        P4 --> P5[Clean Local Images]
-    end
+Step 6: DEPLOY
+  GitHub Actions --> SSM --> EC2
+  Commands:
+  1. ECR Login
+  2. Pull new image
+  3. Stop old container
+  4. Start new container
+  5. Save version
+  6. Cleanup
 
-    SSM --> EC2
-    EC2 --> Verify{8. Verification}
+Step 7: VERIFY
+  Check: Container running? Version correct? Health OK?
 
-    Verify -- Success --> Done[✅ Live!]
-    Verify -- Fail --> Rollback[⚠️ Trigger Rollback]
-
-    %% Styling
-    style BuildStage fill:#f5f5f5,stroke:#333
-    style ECR fill:#ff9900,color:#fff,stroke:#e65100
-    style EC2 fill:#e8f5e9,stroke:#2e7d32
-    style Verify fill:#fff9c4,stroke:#fbc02d
+Step 8: LIVE
+  Users --> EC2:80 --> Docker:3000 --> React App
 
 ### Rollback Architecture
 
@@ -219,43 +223,36 @@ Available in ECR:
 
 Rollback Process:
    
-   1. User triggers rollback to v1.455
-      │
-      │ Via GitHub Actions workflow or CLI script
-      │
-      ▼
-   2. GitHub Actions sends SSM command to EC2
-      │
-      │ Commands:
-      │ • docker pull ECR_URI:v1.455
-      │ • docker stop react-app
-      │ • docker rm react-app
-      │ • docker run ... ECR_URI:v1.455
-      │ • echo v1.455 > /var/app/current-version.txt
-      │
-      ▼
-   3. EC2 runs commands
-      │
-      │ Time: ~30-60 seconds
-      │
-      ▼
-   4. Verification
-      │
-      ✓ Container running
-      ✓ Version file updated
-      │
-      ▼
-   5. Rollback Complete!
-   
-   App EC2 now running: v1.455 (20240207-120000-455-xyz1234)
+STEP 1: Trigger Rollback
+  - GitHub Actions workflow (manual trigger)
+ 
+STEP 2: GitHub Actions Sends Command
+  - Uses SSM to send commands to EC2
+  - No SSH needed!
+
+STEP 3: EC2 Executes Rollback
+  1. Pull old version from ECR (v1.455)
+  2. Stop current container
+  3. Remove current container
+  4. Start old version container
+  5. Update version file
+  6. Verify container is running
+
+STEP 4: Verification
+  - Check: Container running? YES
+  - Check: Version correct? YES
+  - Check: Health OK? YES
+
+STEP 5: Complete!
+  App now running v1.455 (30-60 seconds total)
 
 
-Rollback Guarantees:
-   ✓ All versions stored for 15 builds
-   ✓ One-command rollback
-   ✓ No code changes needed
-   ✓ Same deployment process (reliable)
-   ✓ Full audit trail in CloudWatch
+**Rollback Guarantees:**
+   + All versions stored for 15 builds
+   + One command rollback
+   + No code changes needed
+   + Same deployment process (reliable)
+   + Can rollback to ANY previous version
 
 ## 🚀 Quick Start
 ### Prerequisites
@@ -271,10 +268,10 @@ cd github-actions-cicd-ecr-ec2
 ```
 
 ### 2. Setup AWS Infrastructure
-IAM role with OIDC (GitHub Actions + Application)
-ECR repository
-EC2 instance (Application)
-Security groups
+* IAM role with OIDC (GitHub Actions + Application)
+* ECR repository
+* EC2 instance (Application)
+* Security groups
 
 ### 3. Configure GitHub Secrets
 1. Go to your repo → Settings → Secrets and variables → Actions
@@ -311,14 +308,14 @@ git push origin main
 
 ## ⚙️ How It Works
 ### Workflow Stages Explained
-- stage('Checkout')           # Clone repo, get git commit SHA
-- stage('AWS Auth OIDC')      # Get temporary credentials (no keys!)
-- stage('ECR Login')          # Authenticate to ECR (IAM role)
-- stage('Pull Cache')         # Download previous build layers
-- stage('Build Image')        # Build with BuildKit caching
-- stage('Push to ECR')        # Upload with 4 different tags
-- stage('Deploy via SSM')     # Remote deployment (no SSH)
-- stage('Verify')             # Confirm container is running
+- stage('Checkout')------------# Clone repo, get git commit SHA
+- stage('AWS Auth OIDC')-------# Get temporary credentials (no keys!)
+- stage('ECR Login')-----------# Authenticate to ECR (IAM role)
+- stage('Pull Cache')----------# Download previous build layers
+- stage('Build Image')---------# Build with BuildKit caching
+- stage('Push to ECR')---------# Upload with 4 different tags
+- stage('Deploy via SSM')------# Remote deployment (no SSH)
+- stage('Verify')--------------# Confirm container is running
 
 ### Version Tagging Strategy
 Each build creates a version like:
@@ -335,7 +332,7 @@ Why this format?
 + ✅ Chronologically sortable
 + ✅ Unique for every build
 + ✅ Easy to trace back to code
-+ ✅ Human-readable
++ ✅ Human readable
 
 ### Docker Layer Caching
 How it saves 50% time:
@@ -382,35 +379,31 @@ How it saves 50% time:
 GitHub Actions Workflow:
 
 1. Go to Actions tab
-2. Click Rollback Deployment workflow
+2. Click [`.github/workflows/rollback.yml`](./.github/workflows/rollback.yml)
 3. Click Run workflow
 4. Enter version: 20240207-120000-455-xyz1234
 5. Click Run workflow
 
 ## 💰 Cost Analysis
-**Cost Optimization Options**
+### Cost Optimization Options
 
 * Option 1: Spot Instances (Save 70%)
-
-App: t3.micro Spot = $2/mo
-Total: ~$3.50/mo 
+   App: t3.micro Spot = $2/mo
+   (Total: ~$3.50/mo)
 
 * Option 2: Smaller Instances
-
-App: t3.nano = $4/mo
-Total: ~$5/mo
+   App: t3.nano = $4/mo
+   (Total: ~$5/mo)
 
 * Option 3: Stop when not in use
-
-Only run during work hours (8h/day, 5 days/week)
-Total: ~$2/mo
+   Only run during work hours (8h/day, 5 days/week)
+   (Total: ~$2/mo)
 
 * GitHub Actions Free Tier
-
-- 2,000 minutes/month (public repos)
-- 500 MB storage
-- Unlimited for public repos
-Typical build: ~3-5 minutes
+   - 2,000 minutes/month (public repos)
+   - 500 MB storage
+   - Unlimited for public repos
+   - Typical build: ~3-5 minutes
 
 ## 🙏 Acknowledgments
 
