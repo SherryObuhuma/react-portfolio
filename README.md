@@ -15,16 +15,21 @@ Total time: 5 minutes (all automatic!)
 
 ### 📖 How It Works (Simple Explanation)
 
+```mermaid
 graph LR
-    A[<b>1. Push Code</b><br/>10 seconds] --> B[<b>2. GitHub Builds It</b><br/>3-5 minutes]
-    B --> C[<b>3. AWS Stores Container</b><br/>30 seconds]
-    C --> D[<b>4. Your Server Runs It</b><br/>Live! ✨]
+    A[1. Push Code<br/>10s] --> B[2. GitHub Builds It<br/>3-5 min]
+    B --> C[3. AWS Stores Container<br/>30s]
+    C --> D[4. Your Server Runs It<br/>Live! ✨]
 
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#bbf,stroke:#333,stroke-width:2px
-    style C fill:#dfd,stroke:#333,stroke-width:2px
-    style D fill:#ffd,stroke:#333,stroke-width:2px
-
+    %% Navy Blue Color Scheme
+    style A fill:#1e3a8a,stroke:#000,stroke-width:2px,color:#fff
+    style B fill:#1e40af,stroke:#000,stroke-width:2px,color:#fff
+    style C fill:#1e3a8a,stroke:#000,stroke-width:2px,color:#fff
+    style D fill:#172554,stroke:#000,stroke-width:2px,color:#fff
+    
+    %% Line Color
+    linkStyle default stroke:#1e3a8a,stroke-width:2px
+```
 ### ✨ Features
 - 💰 FREE CI/CD - GitHub Actions
 - ✅ Zero Secrets - Uses IAM roles.No access keys or SSH keys in code.
@@ -36,10 +41,11 @@ graph LR
 - 🔄 Automated CI/CD - Push to main triggers automatic deployment
 - 📊 Full Traceability - Track every deployment with version tags
 
+
 ## 🏗️ Architecture
 
 ### The Simple Version
-                     **HOW IT ALL WORKS**
+                              HOW IT ALL WORKS
 
     YOU                GITHUB              AWS             USERS
      │                   │                  │                │
@@ -63,197 +69,123 @@ graph LR
 
 ### High Level Architecture
 
-STEP 1: You Push Code
------------------------
-Developer --> git push --> GitHub Repository
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Dev as Developer
+    participant GH as GitHub
+    participant GHA as GitHub Actions
+    
+    box "#172554" AWS Cloud Services
+        participant ECR as AWS ECR
+        participant EC2 as EC2 Server
+    end
+    
+    actor User as Users
 
-STEP 2: GitHub Actions Builds
-------------------------------
-GitHub Repository --> webhook --> GitHub Actions
-  |
-  |-- Checkout code
-  |-- Authenticate with AWS (OIDC - no keys!)
-  |-- Build Docker image (3-5 min)
-  |-- Push to ECR
-  |-- Deploy to EC2 via SSM
-  |-- Verify deployment
-  |
-  v
-SUCCESS!
+    Note over Dev, User: CI/CD PIPELINE FLOW
 
-STEP 3: Deployment
-------------------
-GitHub Actions --> AWS ECR (stores image)
-GitHub Actions --> EC2 Server (via SSM - no SSH!)
+    Dev->>GH: git push
+    GH->>GHA: Webhook (instant trigger)
+    
+    activate GHA
+    Note right of GHA: Build Docker Image (~3 min)
+    GHA->>ECR: Push Image to Registry
+    GHA->>EC2: Trigger Deployment (SSM)
+    deactivate GHA
 
-STEP 4: EC2 Runs Your App
---------------------------
-EC2 pulls image from ECR
-EC2 stops old container
-EC2 starts new container
-App is now live!
-
-STEP 5: Users Access
---------------------
-Users --> http://your-server.com --> EC2:80 --> Docker:3000 --> React App
-
-Total Time: 3-5 minutes from push to live!
+    EC2->>ECR: Pull New Image
+    Note right of EC2: Run Container & Update App
+    EC2-->>GHA: Health Check / Verify ✓
+    
+    GHA-->>Dev: Deployment Successful ✅
+    User->>EC2: Visit Site / See Changes!
+```
 
 ### Detailed Component Architecture
 
-STEP 1: You Push Code
------------------------
-Developer --> git push --> GitHub Repository
+```mermaid
+flowchart TD
+    subgraph GitHub [GitHub Repository]
+        direction TB
+        W1[deploy.yml]
+        W2[rollback.yml]
+        DOCKER[Dockerfile]
+        SRC[Source Code]
+    end
 
-STEP 2: GitHub Actions Builds
-------------------------------
-GitHub Repository --> webhook --> GitHub Actions
-  |
-  |-- Checkout code
-  |-- Authenticate with AWS (OIDC - no keys!)
-  |-- Build Docker image (3-5 min)
-  |-- Push to ECR
-  |-- Deploy to EC2 via SSM
-  |-- Verify deployment
-  |
-  v
-SUCCESS!
+    GitHub -- "Push Event" --> GHA
 
-STEP 3: Deployment
-------------------
-GitHub Actions --> AWS ECR (stores image)
-GitHub Actions --> EC2 Server (via SSM - no SSH!)
+    subgraph GHA [GitHub Actions]
+        direction TB
+        Runner["IAM: OIDC (No Keys! 🔐)<br/>"]
+        Stages["<b>Pipeline Stages:</b><br/>1. Checkout Code<br/>2. AWS Auth<br/>3. ECR Login<br/>4. Build Image<br/>5. Push to ECR<br/>6. Deploy via SSM<br/>7. Verify"]
+    end
 
-STEP 4: EC2 Runs Your App
---------------------------
-EC2 pulls image from ECR
-EC2 stops old container
-EC2 starts new container
-App is now live!
+    GHA -- "Push Image" --> ECR
+    GHA -- "SSM Command" --> EC2
 
-STEP 5: Users Access
---------------------
-Users --> http://your-server.com --> EC2:80 --> Docker:3000 --> React App
+    subgraph ECR [AWS ECR]
+        direction TB
+        Repo["<b>Repo: react-app</b><br/>Images: v1.123, latest<br/>Policy: Keep last 15<br/>Scanning: Enabled ✅"]
+    end
 
-Total Time: 3-5 minutes from push to live!
+    subgraph EC2 [Application EC2 Instance]
+        direction TB
+        IAM["IAM Role: AppEC2Role<br/>(ECR + SSM Managed)"]
+        subgraph Container [Docker Container]
+            App["React Application<br/>Port: 3000 ➜ 80"]
+        end
+        Specs["Type: t3.micro<br/>Storage: 20 GB gp3<br/>Security Group: Port 80"]
+    end
+
+    ECR -- "Pull Image" --> EC2
+    EC2 -- "HTTP Traffic" --> Users((Users))
+
+    %% Navy Professional Styling
+    style GitHub fill:#f8fafc,stroke:#1e3a8a,stroke-width:2px
+    style GHA fill:#1e3a8a,stroke:#000,stroke-width:2px,color:#fff
+    style ECR fill:#1e40af,stroke:#000,stroke-width:2px,color:#fff
+    style EC2 fill:#1e3a8a,stroke:#000,stroke-width:2px,color:#fff
+    style Container fill:#172554,stroke:#fff,color:#fff
+    style Users fill:#fff,stroke:#1e3a8a,stroke-width:2px
+    
+    %% Line Colors
+    linkStyle default stroke:#1e3a8a,stroke-width:2px
+```
 
 ### Security Architecture
-**OIDC Authentication Flow (No Access Keys!):**
-1. GitHub Actions requests JWT token from GitHub
-2. GitHub provides JWT token (valid 1 hour)
-3. GitHub Actions sends JWT to AWS STS
-4. AWS validates token with GitHub OIDC provider
-5. AWS provides temporary credentials (expires in 1 hour)
-6. GitHub Actions uses temp credentials to access AWS
-7. Credentials auto-expire after 1 hour
 
-Result: Zero access keys stored anywhere!
+```mermaid
+flowchart TD
+    subgraph IAM [IAM ROLES - KEYLESS AUTHENTICATION]
+        direction TB
+        OIDC["<b>GitHubActionsDeployRole</b><br/>(OIDC Auth 🔐)<br/>• No static access keys<br/>• 1-hour temp credentials<br/>• Auto-expires automatically"]
+        EC2R["<b>AppEC2Role</b><br/>(EC2 Instance Profile)<br/>• Trust: ec2.amazonaws.com<br/>• ECR Read-Only access<br/>• SSM Managed Core"]
+    end
 
-**IAM Roles:**
-GitHubActionsDeployRole (attached via OIDC)
-  - Permissions:
-    * Push/pull images to/from ECR
-    * Send SSM commands to EC2
-    * Describe EC2 instances
-  - Authentication: Temporary credentials only
-  - Validity: 1 hour (auto-expires)
-  - Trust: Only GitHub OIDC provider
+    subgraph Perms [PERMISSIONS]
+        direction LR
+        P1[Push/Pull ECR]
+        P2[Send SSM Commands]
+        P3[Describe Instances]
+    end
 
-AppEC2Role (attached to EC2 instance)
-  - Permissions:
-    * Pull images from ECR (read-only)
-    * Receive SSM commands
-    * Report status to SSM
-  - Authentication: Instance profile
-  - Trust: EC2 service
+    OIDC ==> Perms
+    Perms ==> EC2R
 
-### Data Flow Infrastructure
-**Complete Pipeline Flow**
-Step 1: CODE COMMIT
-  You --> git push --> GitHub
-
-Step 2: BUILD TRIGGER  
-  GitHub --> Webhook --> GitHub Actions (instant)
-
-Step 3: BUILD (with caching)
-  First Build:        3-5 minutes
-  Cached Build:       1-3 minutes (50% faster!)
-
-Step 4: TAGGING
-  Creates 4 tags:
-  - 20240207-143022-456-a1b2c3d (full version)
-  - v1.456 (semantic)
-  - latest (current)
-  - buildcache (for speed)
-
-Step 5: PUSH TO ECR
-  GitHub Actions --> ECR (30 seconds)
-
-Step 6: DEPLOY
-  GitHub Actions --> SSM --> EC2
-  Commands:
-  1. ECR Login
-  2. Pull new image
-  3. Stop old container
-  4. Start new container
-  5. Save version
-  6. Cleanup
-
-Step 7: VERIFY
-  Check: Container running? Version correct? Health OK?
-
-Step 8: LIVE
-  Users --> EC2:80 --> Docker:3000 --> React App
-
-### Rollback Architecture
-
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         ROLLBACK MECHANISM                               │
-└─────────────────────────────────────────────────────────────────────────┘
-
-Current State:
-   App EC2 running: v1.456 (20240207-143022-456-a1b2c3d)
-
-Available in ECR:
-   ├─ v1.456 (20240207-143022-456-a1b2c3d)  ← Current
-   ├─ v1.455 (20240207-120000-455-xyz1234)
-   ├─ v1.454 (20240206-180000-454-abc5678)
-   └─ ... (up to 15 versions)
-
-
-Rollback Process:
-   
-STEP 1: Trigger Rollback
-  - GitHub Actions workflow (manual trigger)
- 
-STEP 2: GitHub Actions Sends Command
-  - Uses SSM to send commands to EC2
-  - No SSH needed!
-
-STEP 3: EC2 Executes Rollback
-  1. Pull old version from ECR (v1.455)
-  2. Stop current container
-  3. Remove current container
-  4. Start old version container
-  5. Update version file
-  6. Verify container is running
-
-STEP 4: Verification
-  - Check: Container running? YES
-  - Check: Version correct? YES
-  - Check: Health OK? YES
-
-STEP 5: Complete!
-  App now running v1.455 (30-60 seconds total)
-
-
-**Rollback Guarantees:**
-   + All versions stored for 15 builds
-   + One command rollback
-   + No code changes needed
-   + Same deployment process (reliable)
-   + Can rollback to ANY previous version
-
+    %% Navy Professional Styling
+    style OIDC fill:#1e3a8a,stroke:#000,stroke-width:2px,color:#fff
+    style EC2R fill:#1e3a8a,stroke:#000,stroke-width:2px,color:#fff
+    style Perms fill:#f8fafc,stroke:#1e3a8a,stroke-width:1px
+    style P1 fill:#172554,color:#fff
+    style P2 fill:#172554,color:#fff
+    style P3 fill:#172554,color:#fff
+    
+    %% Line Colors
+    linkStyle default stroke:#1e3a8a,stroke-width:2px
+```
+        
 ## 🚀 Quick Start
 ### Prerequisites
 You need:
