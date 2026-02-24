@@ -10,7 +10,7 @@ env:
   ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
   CONTAINER_NAME: react-app
-  CONTAINER_PORT: "80:3000"
+  CONTAINER_PORT: "80:80"
 
 permissions:
   id-token: write   # Required for OIDC
