@@ -1,17 +1,15 @@
-# GitHub Actions CI/CD Pipeline to AWS ECR & EC2
+# Automated CI/CD Pipeline with GitHub Actions & AWS
 
 An automated CI/CD pipeline that automatically builds Docker images, pushes them to AWS ECR, and deploys to EC2 instance using GitHub Actions all without hardcoded secrets or SSH keys.
 
 ### 🎯 What This Does
 
 Every time you push code to GitHub:
-* ✅ Automatically builds your app
-* ✅ Packages it in a Docker container
-* ✅ Stores it in AWS ECR
-* ✅ Deploys to your EC2 Server
-* ✅ Makes it live for users
-
-Total time: 5 minutes (all automatic!)
+* Automatically builds your app
+* Packages it in a Docker container
+* Stores it in AWS ECR
+* Deploys to your EC2 Server
+* Makes it live for users
 
 ### 📖 How It Works (Simple Explanation)
 
@@ -19,7 +17,7 @@ Total time: 5 minutes (all automatic!)
 graph LR
     A[1. Push Code<br/>10s] --> B[2. GitHub Builds It<br/>3-5 min]
     B --> C[3. AWS Stores Container<br/>30s]
-    C --> D[4. Your Server Runs It<br/>Live! ✨]
+    C --> D[4. Your Server Runs It<br/>Live!]
 
     %% Navy Blue Color Scheme
     style A fill:#1e3a8a,stroke:#000,stroke-width:2px,color:#fff
@@ -31,15 +29,15 @@ graph LR
     linkStyle default stroke:#1e3a8a,stroke-width:2px
 ```
 ### ✨ Features
-- 💰 FREE CI/CD - GitHub Actions
-- ✅ Zero Secrets - Uses IAM roles.No access keys or SSH keys in code.
-- ⚡ 50%+ Faster Builds - Docker layer caching with BuildKit
-- 🏷️ Automatic Versioning -  YYYYMMDD-HHMMSS-BUILD-COMMIT format
-- 🔄 Easy Rollbacks - One-click rollback to any previous version
-- 🔒 Secure Deployment - AWS Systems Manager (no SSH required)
-- 📦 Private Registry - ECR with automatic image scanning
-- 🔄 Automated CI/CD - Push to main triggers automatic deployment
-- 📊 Full Traceability - Track every deployment with version tags
+- FREE CI/CD - GitHub Actions
+- Zero Secrets - Uses IAM roles.No access keys or SSH keys in code.
+- 50%+ Faster Builds - Docker layer caching with BuildKit
+- Automatic Versioning -  YYYYMMDD-HHMMSS-BUILD-COMMIT format
+- Easy Rollbacks - One-click rollback to any previous version
+- Secure Deployment - AWS Systems Manager (no SSH required)
+- Private Registry - ECR with automatic image scanning
+- Automated CI/CD - Push to main triggers automatic deployment
+- Full Traceability - Track every deployment with version tags
 
 
 ## 🏗️ Architecture
@@ -118,7 +116,7 @@ flowchart TD
 
     subgraph GHA [GitHub Actions]
         direction TB
-        Runner["IAM: OIDC (No Keys! 🔐)<br/>"]
+        Runner["IAM: OIDC (No Keys)<br/>"]
         Stages["<b>Pipeline Stages:</b><br/>1. Checkout Code<br/>2. AWS Auth<br/>3. ECR Login<br/>4. Build Image<br/>5. Push to ECR<br/>6. Deploy via SSM<br/>7. Verify"]
     end
 
@@ -160,7 +158,7 @@ flowchart TD
 flowchart TD
     subgraph IAM [IAM ROLES - KEYLESS AUTHENTICATION]
         direction TB
-        OIDC["<b>GitHubActionsDeployRole</b><br/>(OIDC Auth 🔐)<br/>• No static access keys<br/>• 1-hour temp credentials<br/>• Auto-expires automatically"]
+        OIDC["<b>GitHubActionsDeployRole</b><br/>(OIDC Auth)<br/>• No static access keys<br/>• 1-hour temp credentials<br/>• Auto-expires automatically"]
         EC2R["<b>AppEC2Role</b><br/>(EC2 Instance Profile)<br/>• Trust: ec2.amazonaws.com<br/>• ECR Read-Only access<br/>• SSM Managed Core"]
     end
 
@@ -196,7 +194,6 @@ You need:
 ### 1. Clone Repository
 ```
 git clone https://SherryObuhuma/react-portfolio.git
-cd github-actions-cicd-ecr-ec2
 ```
 
 ### 2. Setup AWS Infrastructure
@@ -221,7 +218,6 @@ cd github-actions-cicd-ecr-ec2
 | **`EC2_INSTANCE_ID`** | `i-0ab...` | From AWS EC2 Console |
 
 ### 4. Workflow Files Already Included
-The repository includes:
 The repository includes:
 - [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml) - Main deployment
 - [`.github/workflows/rollback.yml`](./.github/workflows/rollback.yml) - Rollback workflow
@@ -261,10 +257,10 @@ Each build creates a version like:
 ```
 
 Why this format?
-+ ✅ Chronologically sortable
-+ ✅ Unique for every build
-+ ✅ Easy to trace back to code
-+ ✅ Human readable
++ Chronologically sortable
++ Unique for every build
++ Easy to trace back to code
++ Human readable
 
 ### Docker Layer Caching
 How it saves 50% time:
@@ -316,7 +312,7 @@ GitHub Actions Workflow:
 4. Enter version: 20240207-120000-455-xyz1234
 5. Click Run workflow
 
-## 💰 Cost Analysis
+## Cost Analysis
 ### Cost Optimization Options
 
 * Option 1: Spot Instances (Save 70%)
@@ -335,7 +331,7 @@ GitHub Actions Workflow:
    - 2,000 minutes/month (public repos)
    - 500 MB storage
    - Unlimited for public repos
-   - Typical build: ~3-5 minutes
+   - Typical build: 3-5 minutes
 
 ## 🙏 Acknowledgments
 
