@@ -333,9 +333,6 @@ GitHub Actions Workflow:
    - Unlimited for public repos
    - Typical build: 3-5 minutes
 
-## 🙏 Acknowledgments
+## 🙏 Full Blog
 
-- GitHub for free, powerful CI/CD
-- AWS for comprehensive documentation
-- Docker for containerization
-- Everyone who contributed to making this project better
+If you would like to read a detailed description of the project, here is the link to the article on my medium account [`https://medium.com/@SherryObuhuma/automated-ci-cd-pipeline-with-github-actions-aws-f1b33307f4a2`](https://medium.com/@SherryObuhuma/automated-ci-cd-pipeline-with-github-actions-aws-f1b33307f4a2)
